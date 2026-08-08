@@ -2,19 +2,80 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>Form to SQLite Example</title>
+    <title>GitHub Direct Save</title>
 </head>
 <body>
-    <h2>Apni Details Bharein</h2>
-    <form method="POST">
+    <h2>Form Data to GitHub File</h2>
+    <form id="dataForm">
         <label>Naam (Name):</label><br>
-        <input type="text" name="name" required><br><br>
+        <input type="text" id="name" required><br><br>
         
         <label>Email:</label><br>
-        <input type="email" name="email" required><br><br>
+        <input type="email" id="email" required><br><br>
         
         <button type="submit">Submit</button>
     </form>
+
+    <script>
+        const TOKEN = 'Aapka_GitHub_Personal_Access_Token';
+        const OWNER = 'Aapka_GitHub_Username';
+        const REPO = 'Repo_ka_Naam';
+        const FILE_PATH = 'data.json';
+
+        document.getElementById('dataForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+
+            const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
+
+            try {
+                // 1. Pehle file ka current content aur SHA fetch karein
+                const getRes = await fetch(url, {
+                    headers: { 'Authorization': `token ${TOKEN}` }
+                });
+                const fileData = await getRes.json();
+                const sha = fileData.sha;
+                
+                // Decode existing content (agar pehle se data hai)
+                let existingContent = [];
+                if (fileData.content) {
+                    existingContent = JSON.parse(atob(fileData.content));
+                }
+
+                // Naya data add karein
+                existingContent.push({ name, email, time: new Date().toISOString() });
+
+                // Naye content ko base64 encode karein
+                const updatedContent = btoa(JSON.stringify(existingContent, null, 2));
+
+                // 2. GitHub par file update/commit karein
+                const putRes = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${TOKEN}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: "Add new form submission via API",
+                        content: updatedContent,
+                        sha: sha
+                    })
+                });
+
+                if (putRes.ok) {
+                    alert('Data successfully GitHub file me save ho gaya!');
+                    document.getElementById('dataForm').reset();
+                } else {
+                    alert('Error aa gaya data save karne me.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Kuch galat ho gaya.');
+            }
+        });
+    </script>
 </body>
 </html>
+
 
